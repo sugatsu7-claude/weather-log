@@ -144,35 +144,39 @@
     border-radius: 8px;
     padding: 4px 6px;
   }
-  .year-row {
+  .year-chart {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 6px;
+    align-items: flex-end;
+    gap: 4px;
+    height: 110px;
+    background: #FFFFFF;
+    border-radius: 12px;
+    border: 0.5px solid #E1E0D9;
+    padding: 14px 6px 6px;
   }
-  .year-row-label {
-    font-size: 12px;
-    color: #52514E;
-    width: 36px;
-    flex-shrink: 0;
-  }
-  .year-row-track {
+  .year-bar-col {
     flex: 1;
-    height: 10px;
-    border-radius: 5px;
-    background: #F1EFE8;
-    overflow: hidden;
     display: flex;
-  }
-  .year-row-fill {
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
     height: 100%;
   }
-  .year-row-count {
-    font-size: 11px;
+  .year-bar-count {
+    font-size: 9px;
+    color: #767570;
+    margin-bottom: 3px;
+  }
+  .year-bar {
+    width: 100%;
+    max-width: 20px;
+    border-radius: 3px 3px 0 0;
+    background: #378ADD;
+  }
+  .year-bar-label {
+    font-size: 9px;
     color: #B4B2A9;
-    width: 40px;
-    text-align: right;
-    flex-shrink: 0;
+    margin-top: 4px;
   }
   .month-title {
     font-size: 13px;
@@ -280,7 +284,7 @@
 <div id="month-breakdown"></div>
 
 <div class="month-title" id="year-title" style="margin-top:24px;">年度雷雨分布</div>
-<div id="year-breakdown"></div>
+<div id="year-breakdown" class="year-chart"></div>
 
 <div class="backup-row">
   <button class="backup-btn" id="export-btn"><i class="ti ti-download" aria-hidden="true"></i>导出备份</button>
@@ -465,14 +469,14 @@ function renderYearBreakdown() {
   var wrap = document.getElementById('year-breakdown');
   wrap.innerHTML = '';
   monthCounts.forEach(function (count, idx) {
-    var pct = Math.round((count / maxCount) * 100);
-    var row = document.createElement('div');
-    row.className = 'year-row';
-    row.innerHTML =
-      '<span class="year-row-label">' + (idx + 1) + '月</span>' +
-      '<div class="year-row-track"><div class="year-row-fill" style="width:' + pct + '%;background:#378ADD;"></div></div>' +
-      '<span class="year-row-count">' + count + ' 天</span>';
-    wrap.appendChild(row);
+    var pct = Math.max(Math.round((count / maxCount) * 100), count > 0 ? 8 : 3);
+    var col = document.createElement('div');
+    col.className = 'year-bar-col';
+    col.innerHTML =
+      '<span class="year-bar-count">' + (count > 0 ? count : '') + '</span>' +
+      '<div class="year-bar" style="height:' + pct + '%;"></div>' +
+      '<span class="year-bar-label">' + (idx + 1) + '月</span>';
+    wrap.appendChild(col);
   });
   document.getElementById('year-title').textContent = y + '年各月雷雨天数分布';
 }
