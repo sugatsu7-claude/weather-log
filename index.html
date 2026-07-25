@@ -224,6 +224,57 @@
     gap: 8px;
     margin-top: 16px;
   }
+  .cloud-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .settings-toggle {
+    text-align: center;
+    font-size: 12px;
+    color: #B4B2A9;
+    margin-top: 12px;
+    padding: 6px;
+  }
+  .settings-panel {
+    display: none;
+    background: #FFFFFF;
+    border-radius: 12px;
+    border: 0.5px solid #E1E0D9;
+    padding: 14px;
+    margin-top: 8px;
+  }
+  .settings-panel.open { display: block; }
+  .settings-panel label {
+    display: block;
+    font-size: 12px;
+    color: #767570;
+    margin: 10px 0 4px;
+  }
+  .settings-panel input {
+    width: 100%;
+    font-size: 13px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 0.5px solid #E1E0D9;
+    background: #FCFCFB;
+  }
+  .settings-save {
+    margin-top: 12px;
+    width: 100%;
+    padding: 10px;
+    border-radius: 10px;
+    border: none;
+    background: #1B3A6B;
+    color: #FFFFFF;
+    font-size: 13px;
+  }
+  .settings-hint {
+    font-size: 11px;
+    color: #B4B2A9;
+    margin-top: 10px;
+    line-height: 1.5;
+  }
   .backup-btn {
     flex: 1;
     padding: 12px;
@@ -290,9 +341,25 @@
   <button class="backup-btn" id="export-btn"><i class="ti ti-download" aria-hidden="true"></i>导出备份</button>
   <button class="backup-btn" id="import-btn"><i class="ti ti-upload" aria-hidden="true"></i>导入备份</button>
 </div>
+<div class="cloud-row">
+  <button class="backup-btn" id="cloud-backup-btn"><i class="ti ti-cloud-up" aria-hidden="true"></i>一键云备份</button>
+  <button class="backup-btn" id="cloud-restore-btn"><i class="ti ti-cloud-down" aria-hidden="true"></i>从云端恢复</button>
+</div>
 <input type="file" id="import-input" accept="application/json">
 
-<div class="footer-hint">数据保存在本机,建议定期导出备份</div>
+<div class="settings-toggle" id="settings-toggle">云备份设置</div>
+<div class="settings-panel" id="settings-panel">
+  <label>GitHub 用户名</label>
+  <input type="text" id="gh-owner" placeholder="sugatsu7-claude">
+  <label>仓库名</label>
+  <input type="text" id="gh-repo" placeholder="weather-log">
+  <label>Personal Access Token</label>
+  <input type="password" id="gh-token" placeholder="ghp_ 或 github_pat_ 开头">
+  <button class="settings-save" id="settings-save-btn">保存设置</button>
+  <p class="settings-hint">Token只存在这台设备本地,不会传给任何第三方。去 GitHub → Settings → Developer settings → Fine-grained tokens 新建一个,权限只勾选这个仓库的 Contents 读写即可。</p>
+</div>
+
+<div class="footer-hint">数据保存在本机,建议定期导出或云备份</div>
 
 <script>
 var PERIODS = [
@@ -552,6 +619,117 @@ document.getElementById('import-input').onchange = function (e) {
   };
   reader.readAsText(file);
   e.target.value = '';
+};
+
+var GH_SETTINGS_KEY = 'penang_weather_gh_settings';
+function loadGhSettings() {
+  try { return JSON.parse(localStorage.getItem(GH_SETTINGS_KEY) || '{}'); }
+  catch (e) { return {}; }
+}
+function saveGhSettings(s) {
+  localStorage.setItem(GH_SETTINGS_KEY, JSON.stringify(s));
+}
+
+var ghSettings = loadGhSettings();
+document.getElementById('gh-owner').value = ghSettings.owner || '';
+document.getElementById('gh-repo').value = ghSettings.repo || '';
+document.getElementById('gh-token').value = ghSettings.token || '';
+
+document.getElementById('settings-toggle').onclick = function () {
+  document.getElementById('settings-panel').classList.toggle('open');
+};
+
+document.getElementById('settings-save-btn').onclick = function () {
+  ghSettings = {
+    owner: document.getElementById('gh-owner').value.trim(),
+    repo: document.getElementById('gh-repo').value.trim(),
+    token: document.getElementById('gh-token').value.trim()
+  };
+  saveGhSettings(ghSettings);
+  var s = document.getElementById('status');
+  s.textContent = '设置已保存';
+  setTimeout(function () { s.textContent = ''; }, 1500);
+};
+
+function ghApiUrl() {
+  return 'https://api.github.com/repos/' + ghSettings.owner + '/' + ghSettings.repo + '/contents/data.json';
+}
+
+function b64EncodeUnicode(str) {
+  return btoa(unescape(encodeURIComponent(str)));
+}
+function b64DecodeUnicode(str) {
+  return decodeURIComponent(escape(atob(str)));
+}
+
+document.getElementById('cloud-backup-btn').onclick = async function () {
+  var s = document.getElementById('status');
+  if (!ghSettings.owner || !ghSettings.repo || !ghSettings.token) {
+    s.textContent = '请先完成云备份设置';
+    return;
+  }
+  s.textContent = '备份中…';
+  try {
+    var sha = null;
+    var getResp = await fetch(ghApiUrl(), {
+      headers: { Authorization: 'Bearer ' + ghSettings.token, Accept: 'application/vnd.github+json' }
+    });
+    if (getResp.status === 200) {
+      var getData = await getResp.json();
+      sha = getData.sha;
+    }
+    var body = {
+      message: '备份天气记录 ' + todayKey(),
+      content: b64EncodeUnicode(JSON.stringify(allData, null, 2))
+    };
+    if (sha) body.sha = sha;
+    var putResp = await fetch(ghApiUrl(), {
+      method: 'PUT',
+      headers: { Authorization: 'Bearer ' + ghSettings.token, Accept: 'application/vnd.github+json' },
+      body: JSON.stringify(body)
+    });
+    if (putResp.status === 200 || putResp.status === 201) {
+      s.textContent = '云备份成功';
+    } else {
+      s.textContent = '备份失败,检查Token权限';
+    }
+  } catch (e) {
+    s.textContent = '备份失败,网络或设置有误';
+  }
+  setTimeout(function () { s.textContent = ''; }, 2000);
+};
+
+document.getElementById('cloud-restore-btn').onclick = async function () {
+  var s = document.getElementById('status');
+  if (!ghSettings.owner || !ghSettings.repo || !ghSettings.token) {
+    s.textContent = '请先完成云备份设置';
+    return;
+  }
+  s.textContent = '恢复中…';
+  try {
+    var getResp = await fetch(ghApiUrl(), {
+      headers: { Authorization: 'Bearer ' + ghSettings.token, Accept: 'application/vnd.github+json' }
+    });
+    if (getResp.status !== 200) {
+      s.textContent = '云端还没有备份记录';
+      setTimeout(function () { s.textContent = ''; }, 2000);
+      return;
+    }
+    var getData = await getResp.json();
+    var imported = JSON.parse(b64DecodeUnicode(getData.content));
+    Object.keys(imported).forEach(function (key) {
+      allData[key] = imported[key];
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(allData));
+    if (!allData[tKey]) allData[tKey] = { day: null, night: null };
+    normalizeEntry(allData[tKey]);
+    renderRows();
+    renderTrend();
+    s.textContent = '云端数据已恢复';
+  } catch (e) {
+    s.textContent = '恢复失败';
+  }
+  setTimeout(function () { s.textContent = ''; }, 2000);
 };
 </script>
 
