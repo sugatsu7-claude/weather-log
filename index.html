@@ -66,7 +66,7 @@
     border-color: #85B7EB;
     color: #0C447C;
   }
-  .icon-btn.active.storm { background: #FAEEDA; border-color: #EF9F27; color: #633806; }
+  .icon-btn.active.storm { background: #EDE8F7; border-color: #9B7FD4; color: #3D2473; }
   .icon-btn.active.rain { background: #E6F1FB; border-color: #378ADD; color: #042C53; }
   .icon-btn.active.cloud { background: #F1EFE8; border-color: #B4B2A9; color: #444441; }
   .icon-btn.active.sun { background: #FAEEDA; border-color: #FAC775; color: #854F0B; }
@@ -335,10 +335,6 @@
     <p class="stat-label">近14天下雨天数</p>
     <p class="stat-value" id="rain-days">–</p>
   </div>
-  <div class="stat">
-    <p class="stat-label">已记录天数</p>
-    <p class="stat-value" id="total-days">–</p>
-  </div>
 </div>
 
 <div class="trend-title">最近14天</div>
@@ -471,7 +467,7 @@ function severity(entry, dateKey) {
   return null;
 }
 
-var SEV_COLOR = { storm: '#EF9F27', rain: '#378ADD', cloud: '#B4B2A9', sun: '#FAC775' };
+var SEV_COLOR = { storm: '#7C5CBF', rain: '#378ADD', cloud: '#B4B2A9', sun: '#FAC775' };
 var SEV_HEIGHT = { storm: 100, rain: 78, cloud: 50, sun: 26 };
 var SEV_LABEL = { storm: '雷雨', rain: '雨', cloud: '多云', sun: '晴' };
 
@@ -511,7 +507,6 @@ function renderTrend() {
     trend.appendChild(col);
   }
   document.getElementById('rain-days').textContent = rainDays + ' 天';
-  document.getElementById('total-days').textContent = recordedDays + ' 天';
   renderMonthBreakdown();
   renderYearBreakdown();
 }
